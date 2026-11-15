@@ -7,6 +7,25 @@
 <img alt="Logo Banner" src="https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/branding/SVG/banner-logo-solid.svg?sanitize=true"/>
 </p>
 
+## This fork
+
+A custom build of the Samsung TV app, bundling [samsung-friendly-jellyfin-web](https://github.com/mikebean233/samsung-friendly-jellyfin-web) instead of the stock web client.
+
+- **Installs alongside the store app.** It has its own app ID (`SFJellyfin.Jellyfin`) and shows up as "Jellyfin (custom)". It keeps its own sign-in, so you sign in to your server once in it.
+- **Loads server plugin scripts.** A browser gets plugin UI (such as [QuickTag](https://github.com/mikebean233/jellyfin-quicktag-plugin)) from the page the server sends, but this app ships its own page. After you sign in, `tizen.js` loads each script in `serverScripts` from the server instead. A server without that plugin just answers 404.
+- **CI builds the interface.** Each push builds `www/` from the web fork's `release-12.4` branch (set `WEB_REF` in `.github/workflows/build.yaml`, or pick a ref when running it by hand) and uploads it as an artifact. A `v*` tag also attaches it to a release. Packaging needs your certificate, so it's done locally:
+
+  ```sh
+  unzip jellyfin-tizen-www-*.zip -d jellyfin-tizen && cd jellyfin-tizen
+  tizen build-web -e ".*" -e "*.zip"
+  tizen package -t wgt -o . -- .buildResult
+  tizen install -n Jellyfin.wgt -t <your TV>
+  ```
+
+  See [Deploy to TV](#deploy-to-tv) for certificates and Developer Mode.
+
+Keep the web branch on the same version as your server.
+
 ## Build Process
 _Also look [Wiki](https://github.com/jellyfin/jellyfin-tizen/wiki)._
 

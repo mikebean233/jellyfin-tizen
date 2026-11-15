@@ -199,4 +199,31 @@
     }
 
     window.addEventListener('viewshow', updateKeys);
+
+    // Scripts that server plugins add to the web UI. A browser gets them from the
+    // index.html the server sends, but this app ships its own index.html, so load
+    // them from the server once signed in. A missing plugin is just a failed request.
+    var serverScripts = ['QuickTag/ClientScript'];
+    var serverScriptsLoaded = false;
+
+    function loadServerScripts() {
+        var client = window.ApiClient;
+
+        // The scripts follow window.ApiClient themselves, so loading once is enough
+        if (serverScriptsLoaded || !client || !client.serverAddress() || !client.accessToken()) {
+            return;
+        }
+
+        serverScriptsLoaded = true;
+        serverScripts.forEach(function (path) {
+            var script = document.createElement('script');
+            script.src = client.getUrl(path);
+            script.onerror = function () {
+                console.log('Server script not available: ' + path);
+            };
+            document.head.appendChild(script);
+        });
+    }
+
+    window.addEventListener('viewshow', loadServerScripts);
 })();
