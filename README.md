@@ -35,7 +35,13 @@ scripts/tv.sh <TV IP> --skip-web    # only tizen.js or config.xml changed
 scripts/tv.sh <TV IP> --dev         # unminified web build, easier to debug
 ```
 
-It takes about a minute. For UI work, iterating in a desktop browser is quicker: run `npm start` in the web fork with Node 24 (12.4's dependencies reject newer versions), open http://localhost:8080, add your server, and set **Settings → Display → Layout** to **TV**. Then use `tv.sh` to check the result on the TV.
+It takes about a minute. For UI work, iterating in a desktop browser is quicker:
+
+```sh
+scripts/web-dev.sh                  # dev server for ../samsung-friendly-jellyfin-web on http://localhost:8080
+```
+
+Add your server, sign in, and set **Settings → Display → Layout** to **TV**. Edits under `src/` reload in a few seconds, and plugin scripts such as QuickTag load from the server as they do on the TV. Then use `tv.sh` to check the result on the TV.
 
 If an install is refused with "Author certificate not match" (the signing key changed) or because the installed version is newer, uninstall the app from the TV and run it again. `VERSION=x.y.z scripts/tv.sh ...` sets the version.
 
