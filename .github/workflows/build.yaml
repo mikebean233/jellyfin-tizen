@@ -26,15 +26,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: ${{ env.WEB_REPO }}
           ref: ${{ inputs.web_ref || env.WEB_REF }}
           path: jellyfin-web
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -64,7 +64,7 @@ jobs:
             echo "Unzip it, then package and install it from that folder as the README describes."
           } > notes.md
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.bundle.outputs.name }}
           path: ${{ steps.bundle.outputs.name }}.zip
