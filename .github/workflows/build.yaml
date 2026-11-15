@@ -1,7 +1,7 @@
 name: Build
 
-# Builds the app's www/ from samsung-friendly-jellyfin-web. Packaging and signing the
-# .wgt needs your own Tizen/Samsung certificate, so that step runs locally (README).
+# Builds Jellyfin.wgt from samsung-friendly-jellyfin-web, signed with the Tizen SDK
+# image's default certificate (scripts/package.sh). v* tags attach it to a release.
 
 on:
   push:
@@ -51,26 +51,31 @@ jobs:
       - name: Build www
         run: JELLYFIN_WEB_DIR=jellyfin-web/dist npm ci --no-audit
 
-      - name: Bundle
-        id: bundle
+      - name: Package
+        id: package
         run: |
+          # Tags are vX.Y.Z; other builds get 0.1.<run number>
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then version=${GITHUB_REF_NAME#v}; else version=0.1.$GITHUB_RUN_NUMBER; fi
+          scripts/package.sh "$version" build/Jellyfin.wgt
           web_sha=$(git -C jellyfin-web rev-parse --short HEAD)
-          name="jellyfin-tizen-www-${GITHUB_REF_NAME//\//-}-web-${web_sha}"
-          echo "name=$name" >> "$GITHUB_OUTPUT"
-          zip -qr "$name.zip" www config.xml index.html tizen.js icon.png
+          echo "name=Jellyfin-${GITHUB_REF_NAME//\//-}-web-${web_sha}" >> "$GITHUB_OUTPUT"
           {
-            echo "Web: \`$WEB_REPO@$(git -C jellyfin-web rev-parse HEAD)\`"
+            echo "App version $version, web \`$WEB_REPO@$(git -C jellyfin-web rev-parse HEAD)\`"
             echo
-            echo "Unzip it, then package and install it from that folder as the README describes."
+            echo "Install on a TV in Developer Mode:"
+            echo
+            echo '```sh'
+            echo "docker run --rm --platform linux/amd64 -e GITHUB_REPO=$GITHUB_REPOSITORY -e WGT_FILE=Jellyfin -e RELEASE_TAG=$GITHUB_REF_NAME ghcr.io/gardner/install-wgt-tizen <TV IP>"
+            echo '```'
           } > notes.md
 
       - uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.bundle.outputs.name }}
-          path: ${{ steps.bundle.outputs.name }}.zip
+          name: ${{ steps.package.outputs.name }}
+          path: build/Jellyfin.wgt
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" "${{ steps.bundle.outputs.name }}.zip" --title "$GITHUB_REF_NAME" --notes-file notes.md
+        run: gh release create "$GITHUB_REF_NAME" build/Jellyfin.wgt --title "$GITHUB_REF_NAME" --notes-file notes.md

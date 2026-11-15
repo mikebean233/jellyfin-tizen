@@ -13,16 +13,31 @@ A custom build of the Samsung TV app, bundling [samsung-friendly-jellyfin-web](h
 
 - **Installs alongside the store app.** It has its own app ID (`SFJellyfin.Jellyfin`) and shows up as "Jellyfin (custom)". It keeps its own sign-in, so you sign in to your server once in it.
 - **Loads server plugin scripts.** A browser gets plugin UI (such as [QuickTag](https://github.com/mikebean233/jellyfin-quicktag-plugin)) from the page the server sends, but this app ships its own page. After you sign in, `tizen.js` loads each script in `serverScripts` from the server instead. A server without that plugin just answers 404.
-- **CI builds the interface.** Each push builds `www/` from the web fork's `release-12.4` branch (set `WEB_REF` in `.github/workflows/build.yaml`, or pick a ref when running it by hand) and uploads it as an artifact. A `v*` tag also attaches it to a release. Packaging needs your certificate, so it's done locally:
+- **CI builds the app.** Each push builds `Jellyfin.wgt` from the web fork's `release-12.4` branch (set `WEB_REF` in `.github/workflows/build.yaml`, or pick a ref when running it by hand) and uploads it as an artifact. It's signed with the Tizen SDK image's default certificate, which TVs in Developer Mode accept. A `vX.Y.Z` tag attaches it to a release, and the app's version is set from the tag.
 
-  ```sh
-  unzip jellyfin-tizen-www-*.zip -d jellyfin-tizen && cd jellyfin-tizen
-  tizen build-web -e ".*" -e "*.zip"
-  tizen package -t wgt -o . -- .buildResult
-  tizen install -n Jellyfin.wgt -t <your TV>
-  ```
+### Install a release
 
-  See [Deploy to TV](#deploy-to-tv) for certificates and Developer Mode.
+Put the TV in [Developer Mode](#deploy-to-tv) with this computer as Host PC IP, then:
+
+```sh
+docker run --rm --platform linux/amd64 \
+  -e GITHUB_REPO=mikebean233/jellyfin-tizen -e WGT_FILE=Jellyfin -e RELEASE_TAG=v1.0.0 \
+  ghcr.io/gardner/install-wgt-tizen <TV IP>
+```
+
+### Iterate locally
+
+`scripts/tv.sh` builds your local web checkout, packages it and installs it on the TV, all in Docker:
+
+```sh
+scripts/tv.sh <TV IP>               # web from ../samsung-friendly-jellyfin-web
+scripts/tv.sh <TV IP> --skip-web    # only tizen.js or config.xml changed
+scripts/tv.sh <TV IP> --dev         # unminified web build, easier to debug
+```
+
+It takes about a minute. For UI work, iterating in a desktop browser is quicker: run `npm start` in the web fork with Node 24 (12.4's dependencies reject newer versions), open http://localhost:8080, add your server, and set **Settings → Display → Layout** to **TV**. Then use `tv.sh` to check the result on the TV.
+
+If an install is refused with "Author certificate not match" (the signing key changed) or because the installed version is newer, uninstall the app from the TV and run it again. `VERSION=x.y.z scripts/tv.sh ...` sets the version.
 
 Keep the web branch on the same version as your server.
 
