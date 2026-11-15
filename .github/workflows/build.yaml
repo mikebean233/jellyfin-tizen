@@ -1,0 +1,76 @@
+name: Build
+
+# Builds the app's www/ from samsung-friendly-jellyfin-web. Packaging and signing the
+# .wgt needs your own Tizen/Samsung certificate, so that step runs locally (README).
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      web_ref:
+        description: samsung-friendly-jellyfin-web branch, tag or commit to build
+        required: false
+
+env:
+  WEB_REPO: mikebean233/samsung-friendly-jellyfin-web
+  # Keep this on the branch that matches your server's version
+  WEB_REF: release-12.4
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.WEB_REPO }}
+          ref: ${{ inputs.web_ref || env.WEB_REF }}
+          path: jellyfin-web
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            jellyfin-web/package-lock.json
+
+      - name: Build jellyfin-web
+        working-directory: jellyfin-web
+        run: |
+          npm ci --no-audit
+          USE_SYSTEM_FONTS=1 npm run build:production
+
+      - name: Build www
+        run: JELLYFIN_WEB_DIR=jellyfin-web/dist npm ci --no-audit
+
+      - name: Bundle
+        id: bundle
+        run: |
+          web_sha=$(git -C jellyfin-web rev-parse --short HEAD)
+          name="jellyfin-tizen-www-${GITHUB_REF_NAME//\//-}-web-${web_sha}"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          zip -qr "$name.zip" www config.xml index.html tizen.js icon.png
+          {
+            echo "Web: \`$WEB_REPO@$(git -C jellyfin-web rev-parse HEAD)\`"
+            echo
+            echo "Unzip it, then package and install it from that folder as the README describes."
+          } > notes.md
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.bundle.outputs.name }}
+          path: ${{ steps.bundle.outputs.name }}.zip
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "${{ steps.bundle.outputs.name }}.zip" --title "$GITHUB_REF_NAME" --notes-file notes.md
