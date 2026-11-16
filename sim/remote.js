@@ -4,7 +4,8 @@
 // Arrows and Enter are the D-pad and OK as they are. Other keys are mapped to remote
 // buttons below and sent with the key codes a Samsung TV uses; keys a remote doesn't
 // have are dropped, so nothing works here that wouldn't on the TV. In a text field
-// the keyboard types, standing in for the TV's on-screen keyboard.
+// with the on-screen keyboard open (OK on the field opens it, Back closes it) the
+// keyboard types, standing in for the TV's.
 (function () {
     'use strict';
 
@@ -13,8 +14,8 @@
     var MEDIA = {
         p: { name: 'Play/Pause', key: 'MediaPlayPause', keyCode: 10252, register: 'MediaPlayPause' },
         y: { name: 'Play', key: 'MediaPlay', keyCode: 415, register: 'MediaPlay' },
-        // Pause is the one code the web client reads from event.code; 'Pause' is a guess at the TV's
-        u: { name: 'Pause', key: 'MediaPause', keyCode: 19, code: 'Pause', register: 'MediaPause' },
+        // As a Samsung TV sends it (jellyfin-tizen#314)
+        u: { name: 'Pause', key: 'XF86AudioPause', keyCode: 19, code: 'MediaPause', register: 'MediaPause' },
         s: { name: 'Stop', key: 'MediaStop', keyCode: 413, register: 'MediaStop' },
         ',': { name: 'Rewind', key: 'MediaRewind', keyCode: 412, register: 'MediaRewind' },
         '.': { name: 'Fast-forward', key: 'MediaFastForward', keyCode: 417, register: 'MediaFastForward' },
@@ -27,8 +28,9 @@
     var legend;
     var lastKey;
 
+    // A field the web client holds read-only has the TV's keyboard closed (OK opens it)
     function isEditable(el) {
-        if (!el) return false;
+        if (!el || el.readOnly) return false;
         if (el.isContentEditable) return true;
         if (el.tagName === 'TEXTAREA') return true;
         return el.tagName === 'INPUT' && !/^(button|checkbox|color|file|hidden|image|radio|range|reset|submit)$/i.test(el.type);
@@ -116,6 +118,7 @@
         var sizeNote = size === '1920×1080' ? size : size + ' (the TV is 1920×1080: use the device toolbar)';
         legend.innerHTML = '<b>TV simulator</b> · Tizen ' + window.__tvSim.tizenVersion + ' · ' + sizeNote
             + '<br>Arrows: D-pad · Enter: OK · Esc / Backspace: Back'
+            + '<br>Text field: OK opens the keyboard (type on yours), Back closes it'
             + '<br>P play/pause · Y play · U pause · S stop · , rewind · . fast-forward · [ previous · ] next'
             + '<br>H hide this · M mouse ' + (mouseBlocked ? 'off' : 'on')
             + (lastKey ? '<br>Last: <b>' + lastKey.replace(/</g, '&lt;') + '</b>' : '');
