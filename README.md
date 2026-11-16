@@ -43,6 +43,18 @@ scripts/web-dev.sh                  # dev server for ../samsung-friendly-jellyfi
 
 Add your server, sign in, and set **Settings → Display → Layout** to **TV**. Edits under `src/` reload in a few seconds, and plugin scripts such as QuickTag load from the server as they do on the TV. Then use `tv.sh` to check the result on the TV.
 
+#### TV simulator
+
+The TV emulator in Tizen Studio doesn't run on Apple Silicon. Instead, `scripts/web-dev.sh --tv` runs the dev server with this repo's real `tizen.js` against simulated Tizen APIs (`sim/`), on http://localhost:8088:
+
+- The web client sees a Samsung TV: its user agent (Tizen 6.5 by default, `--tizen 7.0` and so on), TV layout, and the app's `NativeShell`. Plugin scripts load through `tizen.js`, as on the TV.
+- The keyboard is the remote, sending the TV's key codes. Arrows are the D-pad, Enter is OK, and Esc or Backspace is Back. For media buttons: P play/pause, Y play, U pause, S stop, `,` rewind, `.` fast-forward, `[` previous, `]` next. As on the TV, media buttons only reach the app while `tizen.js` has registered them.
+- Keys a remote doesn't have are dropped, and the mouse is off (M toggles it), so anything you can't reach this way is a real problem on the TV. In text fields the keyboard types, standing in for the TV's on-screen keyboard. H hides the key guide.
+- Set the page to 1920×1080 with DevTools' device toolbar to match the TV.
+- Edits to `tizen.js` or `sim/` reload the page.
+
+What it can't show: the TV's older browser engine, its speed, and video playback. The web client asks the server for formats the TV plays, which Chrome may not.
+
 If an install is refused with "Author certificate not match" (the signing key changed) or because the installed version is newer, uninstall the app from the TV and run it again. Local builds use `config.xml`'s version; `VERSION=x.y.z scripts/tv.sh ...` sets another.
 
 Keep the web branch on the same version as your server.
