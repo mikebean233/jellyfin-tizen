@@ -49,7 +49,7 @@ The TV emulator in Tizen Studio doesn't run on Apple Silicon. Instead, `scripts/
 
 - The web client sees a Samsung TV: its user agent (Tizen 6.5 by default, `--tizen 7.0` and so on), TV layout, and the app's `NativeShell`. Plugin scripts load through `tizen.js`, as on the TV.
 - The keyboard is the remote, sending the TV's key codes. Arrows are the D-pad, Enter is OK, and Esc or Backspace is Back. For media buttons: P play/pause, Y play, U pause, S stop, `,` rewind, `.` fast-forward, `[` previous, `]` next. As on the TV, media buttons only reach the app while `tizen.js` has registered them.
-- Keys a remote doesn't have are dropped, and the mouse is off (M toggles it), so anything you can't reach this way is a real problem on the TV. In text fields the keyboard types, standing in for the TV's on-screen keyboard. H hides the key guide.
+- Keys a remote doesn't have are dropped, and the mouse is off (M toggles it), so anything you can't reach this way is a real problem on the TV. As on the TV (with the web fork's change), the on-screen keyboard stays closed when a text field gets focus: OK on the field opens it, and then your keyboard types; Back closes it. H hides the key guide.
 - Set the page to 1920×1080 with DevTools' device toolbar to match the TV.
 - Edits to `tizen.js` or `sim/` reload the page.
 
