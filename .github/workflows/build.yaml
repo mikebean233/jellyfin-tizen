@@ -22,11 +22,17 @@ env:
 permissions:
   contents: write
 
+# Releases from master take the next version number, so they run one at a time
+concurrency:
+  group: ${{ github.ref == 'refs/heads/master' && github.event_name == 'push' && 'release' || github.run_id }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # tags, for the next version
 
       - uses: actions/checkout@v7
         with:
@@ -51,21 +57,52 @@ jobs:
       - name: Build www
         run: JELLYFIN_WEB_DIR=jellyfin-web/dist npm ci --no-audit
 
+      - name: Version
+        id: version
+        run: |
+          # Tizen app versions are x.y.z with x, y <= 255 and z <= 65535
+          file=$(grep -o '<widget [^>]*' config.xml | sed -n 's/.* version="\([^"]*\)".*/\1/p')
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="$GITHUB_REF_NAME"; version="${tag#v}"   # a tag pushed by hand
+            release=true
+          elif [[ "$GITHUB_REF" == refs/heads/master && "$GITHUB_EVENT_NAME" == push ]]; then
+            # every push to master is released as the next version: the latest tag's patch
+            # + 1, or config.xml's version when that's higher (to bump minor or major)
+            latest=$(git tag -l 'v*' | sed 's/^v//' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+            latest=${latest:-0.0.0}
+            bumped="${latest%.*}.$(( ${latest##*.} + 1 ))"
+            version=$(printf '%s\n' "$bumped" "$file" | sort -V | tail -1)
+            git rev-parse -q --verify "refs/tags/v$version" >/dev/null && { echo "v$version already exists" >&2; exit 1; }
+            tag="v$version"
+            release=true
+          else
+            # builds that aren't released
+            tag="$GITHUB_REF_NAME"; version="0.1.$GITHUB_RUN_NUMBER"
+            release=false
+          fi
+          echo "Version $version (tag $tag, release: $release)"
+          {
+            echo "version=$version"
+            echo "tag=$tag"
+            echo "release=$release"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Package
         id: package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
-          # Tags are vX.Y.Z; other builds get 0.1.<run number>
-          if [[ $GITHUB_REF == refs/tags/v* ]]; then version=${GITHUB_REF_NAME#v}; else version=0.1.$GITHUB_RUN_NUMBER; fi
-          scripts/package.sh "$version" build/Jellyfin.wgt
+          scripts/package.sh "$VERSION" build/Jellyfin.wgt
           web_sha=$(git -C jellyfin-web rev-parse --short HEAD)
-          echo "name=Jellyfin-${GITHUB_REF_NAME//\//-}-web-${web_sha}" >> "$GITHUB_OUTPUT"
+          echo "name=Jellyfin-${TAG//\//-}-web-${web_sha}" >> "$GITHUB_OUTPUT"
           {
-            echo "App version $version, web \`$WEB_REPO@$(git -C jellyfin-web rev-parse HEAD)\`"
+            echo "App version $VERSION, web \`$WEB_REPO@$(git -C jellyfin-web rev-parse HEAD)\`"
             echo
             echo "Install on a TV in Developer Mode:"
             echo
             echo '```sh'
-            echo "docker run --rm --platform linux/amd64 -e GITHUB_REPO=$GITHUB_REPOSITORY -e WGT_FILE=Jellyfin -e RELEASE_TAG=$GITHUB_REF_NAME ghcr.io/gardner/install-wgt-tizen <TV IP>"
+            echo "docker run --rm --platform linux/amd64 -e GITHUB_REPO=$GITHUB_REPOSITORY -e WGT_FILE=Jellyfin -e RELEASE_TAG=$TAG ghcr.io/gardner/install-wgt-tizen <TV IP>"
             echo '```'
           } > notes.md
 
@@ -75,7 +112,9 @@ jobs:
           path: build/Jellyfin.wgt
 
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        # creates the tag too when it doesn't exist yet (pushes to master)
+        if: steps.version.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" build/Jellyfin.wgt --title "$GITHUB_REF_NAME" --notes-file notes.md
+          TAG: ${{ steps.version.outputs.tag }}
+        run: gh release create "$TAG" build/Jellyfin.wgt --target "$GITHUB_SHA" --title "$TAG" --notes-file notes.md

@@ -64,7 +64,7 @@ in_node "$root" jellyfin-tizen-modules '
     npx gulp > /tmp/gulp.log 2>&1 || { cat /tmp/gulp.log; exit 1; }'
 
 echo "==> Packaging"
-"$root/scripts/package.sh" "${VERSION:-0.1.0}"
+"$root/scripts/package.sh" "${VERSION:-}"
 
 echo "==> Installing on $tv"
 docker run --rm --platform linux/amd64 -v "$root/build:/build" "$TIZEN_SDK_IMAGE" bash -c '
