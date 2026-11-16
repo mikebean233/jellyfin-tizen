@@ -3,15 +3,15 @@
 #
 #   scripts/package.sh [version] [output.wgt]
 #
-# version is x.y.z (x and y at most 255); default 0.1.0. Signs with the SDK image's
+# version is x.y.z (x and y at most 255); default config.xml's. Signs with the SDK image's
 # default "dev" profile, the same one the community installers use. The image is
 # pinned by digest so the signing key stays the same and updates install over the
 # previous build; if it ever changes, uninstall the app from the TV first.
 set -euo pipefail
 
 TIZEN_SDK_IMAGE="${TIZEN_SDK_IMAGE:-vitalets/tizen-webos-sdk@sha256:5107c8a83fae3128d3b9aa2b499a221f1e0188ebb0fa3ad5be01e9ba2eaf33dc}"
-version="${1:-0.1.0}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
+version="${1:-$(grep -o '<widget [^>]*' "$root/config.xml" | sed -n 's/.* version="\([^"]*\)".*/\1/p')}"
 out="${2:-$root/build/Jellyfin.wgt}"
 
 if ! [[ $version =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || (( BASH_REMATCH[1] > 255 || BASH_REMATCH[2] > 255 || BASH_REMATCH[3] > 65535 )); then

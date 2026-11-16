@@ -13,7 +13,7 @@ A custom build of the Samsung TV app, bundling [samsung-friendly-jellyfin-web](h
 
 - **Installs alongside the store app.** It has its own app ID (`SFJellyfin.Jellyfin`) and shows up as "Jellyfin (custom)". It keeps its own sign-in, so you sign in to your server once in it.
 - **Loads server plugin scripts.** A browser gets plugin UI (such as [QuickTag](https://github.com/mikebean233/jellyfin-quicktag-plugin)) from the page the server sends, but this app ships its own page. After you sign in, `tizen.js` loads each script in `serverScripts` from the server instead. A server without that plugin just answers 404.
-- **CI builds the app.** Each push builds `Jellyfin.wgt` from the web fork's `release-12.4` branch (set `WEB_REF` in `.github/workflows/build.yaml`, or pick a ref when running it by hand) and uploads it as an artifact. It's signed with the Tizen SDK image's default certificate, which TVs in Developer Mode accept. A `vX.Y.Z` tag attaches it to a release, and the app's version is set from the tag.
+- **CI builds the app.** Each push builds `Jellyfin.wgt` from the web fork's `release-12.4` branch (set `WEB_REF` in `.github/workflows/build.yaml`, or pick a ref when running it by hand) and uploads it as an artifact. It's signed with the Tizen SDK image's default certificate, which TVs in Developer Mode accept. Every push to `master` is released as the next version: the latest tag's patch number plus one, or the version in `config.xml` when that's higher (raise it there for a minor or major release). CI tags the commit, sets the app's version, and attaches the `.wgt` to the release. Pushing a `vX.Y.Z` tag by hand releases that version instead.
 
 ### Install a release
 
@@ -37,7 +37,7 @@ scripts/tv.sh <TV IP> --dev         # unminified web build, easier to debug
 
 It takes about a minute. For UI work, iterating in a desktop browser is quicker: run `npm start` in the web fork with Node 24 (12.4's dependencies reject newer versions), open http://localhost:8080, add your server, and set **Settings → Display → Layout** to **TV**. Then use `tv.sh` to check the result on the TV.
 
-If an install is refused with "Author certificate not match" (the signing key changed) or because the installed version is newer, uninstall the app from the TV and run it again. `VERSION=x.y.z scripts/tv.sh ...` sets the version.
+If an install is refused with "Author certificate not match" (the signing key changed) or because the installed version is newer, uninstall the app from the TV and run it again. Local builds use `config.xml`'s version; `VERSION=x.y.z scripts/tv.sh ...` sets another.
 
 Keep the web branch on the same version as your server.
 
